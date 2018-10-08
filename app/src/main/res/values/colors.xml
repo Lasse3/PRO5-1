@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#3F51B5</color>
+    <color name="colorPrimaryDark">#303F9F</color>
+    <color name="colorAccent">#FF4081</color>
+
+    <!-- Widget colors -->
+    <color name="myColorPrimary">#00074f</color>
+    <color name="myColorDark">#00073f</color>
+    <color name="amber">#ffb300</color>
+    <color name="myBackgroundColor">#fafafa</color>
+    <color name="myTxtColor">#000000</color>
+    <color name="myHintColor">#8d8d8d</color>
+    <color name="myButtonTextColor">#fafafa</color>
+</resources>

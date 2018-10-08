@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">PRO5</string>
+    <string name="collectData">Collect Data</string>
+    <string name="transferData">Transfer Data</string>
+</resources>
