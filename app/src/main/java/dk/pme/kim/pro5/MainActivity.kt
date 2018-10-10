@@ -33,8 +33,7 @@ class MainActivity : AppCompatActivity() {
             id_transfer.setText(resources.getString(R.string.transferingData))
         }
 
-        else
-        {
+        else {
             id_transfer.setText(resources.getString(R.string.transferData))
         }
     }
