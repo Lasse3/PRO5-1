@@ -17,6 +17,7 @@ import android.os.Bundle
 import android.os.SystemClock
 import android.widget.Toast
 import kotlinx.android.synthetic.main.activity_main.*
+import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity(), SensorEventListener {
 
@@ -26,6 +27,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private var endTime     : Long=0
     private var currentTime : Long=0
     private var elapsedTime : Long=0
+    private var minutes     : Long=0
+    private var seconds     : Long=0
+    private var collectFlag : Boolean=false
 
     override fun onCreate(savedInstanceState: Bundle?)
     {
@@ -35,9 +39,10 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         // Check whether we're recreating a previously destroyed instance
         //update the value if we are, otherwise, just initialize it to 0.
         counterStepDetector = savedInstanceState?.getInt("STATE_STEP_DETECTOR") ?: 0
-        startTime = savedInstanceState?.getLong("START_TIME") ?: 0
+        startTime = savedInstanceState?.getLong("START_TIME") ?: SystemClock.elapsedRealtime()
+        collectFlag= savedInstanceState?.getBoolean("COLLECT_FLAG") ?: false
         currentTime=SystemClock.elapsedRealtime()
-        elapsedTime=startTime-currentTime
+        elapsedTime=currentTime-startTime
         main_elapsed_time.text=elapsedTime.toString()+"seconds"
 
         val mSensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
@@ -56,18 +61,20 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         stepDetectorTxt.text = counterStepDetector.toString()
 
         id_collect.setOnClickListener{
-            if(id_collect.text.toString() == resources.getString(R.string.collectData))
+            if(!collectFlag)
             {
                 id_collect.text = resources.getString(R.string.collectingData)
+                collectFlag=true
             }
-
             else
             {
                 id_collect.text = resources.getString(R.string.collectData)
-                endTime=SystemClock.elapsedRealtime()/1000
+                endTime=SystemClock.elapsedRealtime()
+                collectFlag=false
+                counterStepDetector=0
             }
 
-            startTime = SystemClock.elapsedRealtime()/1000
+            startTime = SystemClock.elapsedRealtime()
         }
 
 
@@ -88,34 +95,26 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         super.onSaveInstanceState(outState)
         outState.putInt("STATE_STEP_DETECTOR", counterStepDetector)
         outState.putLong("START_TIME", startTime)
+        outState.putBoolean("COLLECT_FLAG",collectFlag)
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
-        when(event?.sensor?.type){
-            Sensor.TYPE_STEP_DETECTOR-> {
-                counterStepDetector+= 1
-                stepDetectorTxt.text = counterStepDetector.toString()
-                currentTime=SystemClock.elapsedRealtime()/1000
-                elapsedTime=(currentTime-startTime)
-                if(elapsedTime<60){
-                    main_elapsed_time.text= "${elapsedTime} seconds"
-                }
-                if(elapsedTime in 60..119){
-                    val minute: Float=elapsedTime/60.toFloat()
-                    main_elapsed_time.text= "${minute} minute"
-                }
-                if(elapsedTime>=120){
-                    val minutes: Float=elapsedTime/60.toFloat()
-                    main_elapsed_time.text="${minutes} minutes"
-                }
+        if (collectFlag) {
+            when (event?.sensor?.type) {
+                Sensor.TYPE_STEP_DETECTOR -> {
+                    counterStepDetector += 1
+                    stepDetectorTxt.text = counterStepDetector.toString()
+                    currentTime = SystemClock.elapsedRealtime()
+                    elapsedTime = currentTime - startTime
+                    minutes = TimeUnit.MILLISECONDS.toMinutes(elapsedTime)
+                    seconds = TimeUnit.MILLISECONDS.toSeconds(elapsedTime)
 
-
-
+                    main_elapsed_time.text = "${minutes} min,${seconds} sec"
+                }
             }
         }
     }
-
 }
