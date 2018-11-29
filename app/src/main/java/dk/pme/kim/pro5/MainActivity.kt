@@ -39,10 +39,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             startTime = savedInstanceState?.getLong("START_TIME") ?: SystemClock.elapsedRealtime()
             collectFlag= savedInstanceState?.getBoolean("COLLECT_FLAG") ?: false
         }
-        fun init(){
-            getInstances()
-            getElapsedTime()
-            main_elapsed_time.text=elapsedTime.toString()+"seconds"
+        fun setupSensors(){
             val mSensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
             val mStepDetector= mSensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR)
 
@@ -56,6 +53,13 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                 mSensorManager.registerListener(this, mStepDetector, SensorManager.SENSOR_DELAY_UI)
             }
 
+        }
+        fun init(){
+            getInstances()
+            getElapsedTime()
+            setupSensors()
+            
+            main_elapsed_time.text=elapsedTime.toString()+"seconds"
             stepDetectorTxt.text = counterStepDetector.toString()
         }
         fun setClickListeners(){
@@ -73,7 +77,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                     collectFlag=false
                     counterStepDetector=0
                 }
-
             }
 
             id_transfer.setOnClickListener {
@@ -92,7 +95,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         init()
         setClickListeners()
     }
-
     private fun getElapsedTime(){
         currentTime=SystemClock.elapsedRealtime()
         elapsedTime=currentTime-startTime
@@ -100,12 +102,12 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         seconds = TimeUnit.MILLISECONDS.toSeconds(elapsedTime)
     }
 
-
     private fun putVariables(outState: Bundle){
         outState.putInt("STATE_STEP_DETECTOR", counterStepDetector)
         outState.putLong("START_TIME", startTime)
         outState.putBoolean("COLLECT_FLAG",collectFlag)
     }
+
     override fun onSaveInstanceState(outState: Bundle) {
         // Always call the superclass so it can save the view hierarchy state
         super.onSaveInstanceState(outState)
