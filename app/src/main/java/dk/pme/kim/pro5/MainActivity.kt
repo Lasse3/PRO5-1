@@ -22,7 +22,6 @@ import java.util.concurrent.TimeUnit
 class MainActivity : AppCompatActivity(), SensorEventListener {
 
     private var counterStepDetector=0
-
     private var startTime   : Long=0
     private var endTime     : Long=0
     private var currentTime : Long=0
@@ -33,86 +32,101 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     override fun onCreate(savedInstanceState: Bundle?)
     {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-
-        // Check whether we're recreating a previously destroyed instance
-        //update the value if we are, otherwise, just initialize it to 0.
-        counterStepDetector = savedInstanceState?.getInt("STATE_STEP_DETECTOR") ?: 0
-        startTime = savedInstanceState?.getLong("START_TIME") ?: SystemClock.elapsedRealtime()
-        collectFlag= savedInstanceState?.getBoolean("COLLECT_FLAG") ?: false
-        currentTime=SystemClock.elapsedRealtime()
-        elapsedTime=currentTime-startTime
-        main_elapsed_time.text=elapsedTime.toString()+"seconds"
-
-        val mSensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
-        val mStepDetector= mSensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR)
-
-        if(mStepDetector == null)
-        {
-            Toast.makeText(this, "No Step Detector sensor was found!",
-                    Toast.LENGTH_LONG).show()
+        fun getInstances(){
+            // Check whether we're recreating a previously destroyed instance
+            //update the value if we are, otherwise, just initialize it to 0.
+            counterStepDetector = savedInstanceState?.getInt("STATE_STEP_DETECTOR") ?: 0
+            startTime = savedInstanceState?.getLong("START_TIME") ?: SystemClock.elapsedRealtime()
+            collectFlag= savedInstanceState?.getBoolean("COLLECT_FLAG") ?: false
         }
-        else
-        {
-            mSensorManager.registerListener(this, mStepDetector, SensorManager.SENSOR_DELAY_UI)
-        }
+        fun init(){
+            getInstances()
+            getElapsedTime()
+            main_elapsed_time.text=elapsedTime.toString()+"seconds"
+            val mSensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+            val mStepDetector= mSensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR)
 
-        stepDetectorTxt.text = counterStepDetector.toString()
-
-        id_collect.setOnClickListener{
-            if(!collectFlag)
+            if(mStepDetector == null)
             {
-                id_collect.text = resources.getString(R.string.collectingData)
-                collectFlag=true
+                Toast.makeText(this, "No Step Detector sensor was found!",
+                        Toast.LENGTH_LONG).show()
             }
             else
             {
-                id_collect.text = resources.getString(R.string.collectData)
-                endTime=SystemClock.elapsedRealtime()
-                collectFlag=false
-                counterStepDetector=0
+                mSensorManager.registerListener(this, mStepDetector, SensorManager.SENSOR_DELAY_UI)
             }
 
-            startTime = SystemClock.elapsedRealtime()
+            stepDetectorTxt.text = counterStepDetector.toString()
         }
+        fun setClickListeners(){
+            id_collect.setOnClickListener{
+                if(!collectFlag)
+                {
+                    startTime = SystemClock.elapsedRealtime()
+                    id_collect.text = resources.getString(R.string.collectingData)
+                    collectFlag=true
+                }
+                else
+                {
+                    id_collect.text = resources.getString(R.string.collectData)
+                    endTime=SystemClock.elapsedRealtime()
+                    collectFlag=false
+                    counterStepDetector=0
+                }
 
-
-        id_transfer.setOnClickListener {
-            if(id_transfer.text.toString() == resources.getString(R.string.transferData))
-            {
-                id_transfer.text = resources.getString(R.string.transferingData)
             }
 
-            else {
-                id_transfer.text = resources.getString(R.string.transferData)
+            id_transfer.setOnClickListener {
+                if(id_transfer.text.toString() == resources.getString(R.string.transferData))
+                {
+                    id_transfer.text = resources.getString(R.string.transferingData)
+                }
+
+                else {
+                    id_transfer.text = resources.getString(R.string.transferData)
+                }
             }
         }
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+        init()
+        setClickListeners()
     }
 
-    override fun onSaveInstanceState(outState: Bundle) {
-        // Always call the superclass so it can save the view hierarchy state
-        super.onSaveInstanceState(outState)
+    private fun getElapsedTime(){
+        currentTime=SystemClock.elapsedRealtime()
+        elapsedTime=currentTime-startTime
+        minutes = TimeUnit.MILLISECONDS.toMinutes(elapsedTime)
+        seconds = TimeUnit.MILLISECONDS.toSeconds(elapsedTime)
+    }
+
+
+    private fun putVariables(outState: Bundle){
         outState.putInt("STATE_STEP_DETECTOR", counterStepDetector)
         outState.putLong("START_TIME", startTime)
         outState.putBoolean("COLLECT_FLAG",collectFlag)
     }
+    override fun onSaveInstanceState(outState: Bundle) {
+        // Always call the superclass so it can save the view hierarchy state
+        super.onSaveInstanceState(outState)
+        putVariables(outState)
+    }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
+    }
+
+    private fun updateActivityInfo(){
+        counterStepDetector += 1
+        stepDetectorTxt.text = counterStepDetector.toString()
+        getElapsedTime()
+        main_elapsed_time.text = "${minutes} min,${seconds} sec"
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
         if (collectFlag) {
             when (event?.sensor?.type) {
                 Sensor.TYPE_STEP_DETECTOR -> {
-                    counterStepDetector += 1
-                    stepDetectorTxt.text = counterStepDetector.toString()
-                    currentTime = SystemClock.elapsedRealtime()
-                    elapsedTime = currentTime - startTime
-                    minutes = TimeUnit.MILLISECONDS.toMinutes(elapsedTime)
-                    seconds = TimeUnit.MILLISECONDS.toSeconds(elapsedTime)
-
-                    main_elapsed_time.text = "${minutes} min,${seconds} sec"
+                    updateActivityInfo()
                 }
             }
         }
