@@ -34,22 +34,22 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
 
     //	Values for uploading:
-    private val filename_upload = "data.txt"
+    private val filename = "data2.txt"
     private val mobilePath_upload = "/data/data/dk.pme.kim.pro5/files/"+
-			filename_upload
-    private val firebasePath_upload = "Data/"+filename_upload
-    private val permFlag = false
+			filename
+    private val firebasePath_upload = "Data/"+filename
+    private var permFlag = false
 
     //	Firebase url and file to upload:
     private val url = "gs://storageexample-916c1.appspot.com"
     val file = Uri.fromFile(File(mobilePath_upload))
 
     //  File to be written/appended to:
-    val filename = "data.txt"
     val fh = fileHandler()
 
+    private var startSteps=0
     private var steps=0
-    private var startTime   : Long=0
+    private var startTime  : Long=0
     private var endTime     : Long=0
     private var currentTime : Long=0
     private var elapsedTime : Long=0
@@ -62,13 +62,16 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         fun getInstances(){
             // Check whether we're recreating a previously destroyed instance
             //update the value if we are, otherwise, just initialize it to 0.
-            steps =
+            startSteps =
 					savedInstanceState?.getInt("STATE_STEP_DETECTOR") ?: 0
             startTime =
-					savedInstanceState?.getLong("START_TIME")
-					?: SystemClock.elapsedRealtime()
+					savedInstanceState?.getLong("START_TIME") ?: 0
             collectFlag=
 					savedInstanceState?.getBoolean("COLLECT_FLAG") ?: false
+
+            permFlag=
+                    savedInstanceState?.getBoolean("PERMISSION_FLAG") ?:
+                    false
         }
         fun setupSensors(){
             val mSensorManager =
@@ -87,21 +90,15 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             }
         }
 
-        fun initFileHandler(){
-            fh.setDataFile(filename, "Collected data:\n",
-                    applicationContext)
-        }
-
         fun init(){
             ActivityCompat.requestPermissions(this,
                     permissionsRequired, 123)
-            initFileHandler()
+
             getInstances()
-            getElapsedTime()
             setupSensors()
             
             main_elapsed_time.text= "${elapsedTime}seconds"
-            stepDetectorTxt.text = steps.toString()
+            stepDetectorTxt.text = startSteps.toString()
         }
 
         fun fileWriter(){
@@ -130,15 +127,21 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                 }
                 else
                 {
+                    steps = startSteps
+                    startSteps=0
                     id_collect.text = resources.getString(R.string.collectData)
                     endTime=SystemClock.elapsedRealtime()
                     collectFlag=false
-                    steps=0
                 }
             }
 
             id_transfer.setOnClickListener {
                 fileWriter()
+
+				if(permFlag){
+					uploadFile(url, firebasePath_upload, file)
+				}
+                steps = 0
             }
         }
         super.onCreate(savedInstanceState)
@@ -146,17 +149,13 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         init()
         setClickListeners()
     }
-    private fun getElapsedTime(){
-        currentTime=SystemClock.elapsedRealtime()
-        elapsedTime=currentTime-startTime
-        minutes = TimeUnit.MILLISECONDS.toMinutes(elapsedTime)
-        seconds = TimeUnit.MILLISECONDS.toSeconds(elapsedTime)
-    }
 
     private fun putVariables(outState: Bundle){
-        outState.putInt("STATE_STEP_DETECTOR", steps)
+        outState.putInt("STATE_STEP_DETECTOR", startSteps)
         outState.putLong("START_TIME", startTime)
         outState.putBoolean("COLLECT_FLAG",collectFlag)
+        outState.putBoolean("PERMISSION_FLAG",permFlag)
+        outState.putInt("START_STEPS", startSteps)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -168,9 +167,16 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
     }
 
+    private fun getElapsedTime(){
+        currentTime=SystemClock.elapsedRealtime()
+        elapsedTime=currentTime-startTime
+        minutes = TimeUnit.MILLISECONDS.toMinutes(elapsedTime)
+        seconds = TimeUnit.MILLISECONDS.toSeconds(elapsedTime)
+    }
+
     private fun updateActivityInfo(){
-        steps += 1
-        stepDetectorTxt.text = steps.toString()
+        startSteps += 1
+        stepDetectorTxt.text = startSteps.toString()
         getElapsedTime()
         main_elapsed_time.text = "${minutes} min,${seconds} sec"
     }
@@ -218,7 +224,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             if(grantResults[0] == PackageManager.PERMISSION_GRANTED &&
                     grantResults[1] == PackageManager.PERMISSION_GRANTED &&
                     grantResults[2] == PackageManager.PERMISSION_GRANTED){
-                uploadFile(url, firebasePath_upload, file)
+                permFlag = true
             }
 
             else{
