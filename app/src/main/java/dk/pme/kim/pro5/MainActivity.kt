@@ -16,11 +16,9 @@ import android.hardware.SensorManager
 import android.net.Uri
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
-import android.os.Environment
 import android.os.SystemClock
 import android.support.v4.app.ActivityCompat
 import android.util.Log
-import android.view.View
 import android.widget.Toast
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.android.synthetic.main.activity_main.*
@@ -36,16 +34,21 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
 
     //	Values for uploading:
-    private val filename_upload = "exp6.pdf"
-    private val mobilePath_upload = "/storage/emulated/0/Download/"+
+    private val filename_upload = "data.txt"
+    private val mobilePath_upload = "/data/data/dk.pme.kim.pro5/files/"+
 			filename_upload
-    private val firebasePath_upload = "Test/"+filename_upload
+    private val firebasePath_upload = "Data/"+filename_upload
+    private val permFlag = false
 
     //	Firebase url and file to upload:
     private val url = "gs://storageexample-916c1.appspot.com"
     val file = Uri.fromFile(File(mobilePath_upload))
 
-    private var counterStepDetector=0
+    //  File to be written/appended to:
+    val filename = "data.txt"
+    val fh = fileHandler()
+
+    private var steps=0
     private var startTime   : Long=0
     private var endTime     : Long=0
     private var currentTime : Long=0
@@ -59,7 +62,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         fun getInstances(){
             // Check whether we're recreating a previously destroyed instance
             //update the value if we are, otherwise, just initialize it to 0.
-            counterStepDetector =
+            steps =
 					savedInstanceState?.getInt("STATE_STEP_DETECTOR") ?: 0
             startTime =
 					savedInstanceState?.getLong("START_TIME")
@@ -82,18 +85,40 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                 mSensorManager.registerListener(this, mStepDetector,
 						SensorManager.SENSOR_DELAY_UI)
             }
-
         }
+
+        fun initFileHandler(){
+            fh.setDataFile(filename, "Collected data:\n",
+                    applicationContext)
+        }
+
         fun init(){
             ActivityCompat.requestPermissions(this,
                     permissionsRequired, 123)
+            initFileHandler()
             getInstances()
             getElapsedTime()
             setupSensors()
             
-            main_elapsed_time.text=elapsedTime.toString()+"seconds"
-            stepDetectorTxt.text = counterStepDetector.toString()
+            main_elapsed_time.text= "${elapsedTime}seconds"
+            stepDetectorTxt.text = steps.toString()
         }
+
+        fun fileWriter(){
+            fh.appendDataFile(filename, steps.toString(),
+                    applicationContext)
+
+            fh.appendDataFile(filename, ", ",
+                    applicationContext)
+
+            fh.appendDataFile(filename, "${minutes}.${seconds}",
+                    applicationContext)
+
+            //22, 24.53, 500
+            fh.appendDataFile(filename, "\n",
+                    applicationContext)
+        }
+
         fun setClickListeners(){
             id_collect.setOnClickListener{
                 if(!collectFlag)
@@ -108,22 +133,12 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                     id_collect.text = resources.getString(R.string.collectData)
                     endTime=SystemClock.elapsedRealtime()
                     collectFlag=false
-                    counterStepDetector=0
+                    steps=0
                 }
             }
 
             id_transfer.setOnClickListener {
-                if(id_transfer.text.toString() ==
-                        resources.getString(R.string.transferData))
-                {
-                    id_transfer.text =
-                            resources.getString(R.string.transferingData)
-                }
-
-                else {
-                    id_transfer.text =
-                            resources.getString(R.string.transferData)
-                }
+                fileWriter()
             }
         }
         super.onCreate(savedInstanceState)
@@ -139,7 +154,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     }
 
     private fun putVariables(outState: Bundle){
-        outState.putInt("STATE_STEP_DETECTOR", counterStepDetector)
+        outState.putInt("STATE_STEP_DETECTOR", steps)
         outState.putLong("START_TIME", startTime)
         outState.putBoolean("COLLECT_FLAG",collectFlag)
     }
@@ -154,8 +169,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     }
 
     private fun updateActivityInfo(){
-        counterStepDetector += 1
-        stepDetectorTxt.text = counterStepDetector.toString()
+        steps += 1
+        stepDetectorTxt.text = steps.toString()
         getElapsedTime()
         main_elapsed_time.text = "${minutes} min,${seconds} sec"
     }
