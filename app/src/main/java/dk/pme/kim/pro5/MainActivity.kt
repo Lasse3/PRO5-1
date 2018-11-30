@@ -23,7 +23,10 @@ import android.widget.Toast
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.android.synthetic.main.activity_main.*
 import java.io.File
+import java.math.RoundingMode
+import java.text.DecimalFormat
 import java.util.concurrent.TimeUnit
+import kotlin.math.ceil
 
 class MainActivity : AppCompatActivity(), SensorEventListener {
 
@@ -34,7 +37,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
 
     //	Values for uploading:
-    private val filename = "data2.txt"
+    private val filename = "data.txt"
     private val mobilePath_upload = "/data/data/dk.pme.kim.pro5/files/"+
 			filename
     private val firebasePath_upload = "Data/"+filename
@@ -47,6 +50,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     //  File to be written/appended to:
     val fh = fileHandler()
 
+	private var distanceMeter : String = "0"
     private var startSteps=0
     private var steps=0
     private var startTime  : Long=0
@@ -72,6 +76,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             permFlag=
                     savedInstanceState?.getBoolean("PERMISSION_FLAG") ?:
                     false
+
+            distanceMeter=
+                    savedInstanceState?.getString("DISTANCE") ?: "0"
         }
         fun setupSensors(){
             val mSensorManager =
@@ -99,6 +106,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             
             main_elapsed_time.text= "${elapsedTime}seconds"
             stepDetectorTxt.text = startSteps.toString()
+            main_distance.text = distanceMeter
         }
 
         fun fileWriter(){
@@ -110,6 +118,12 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
             fh.appendDataFile(filename, "${minutes}.${seconds}",
                     applicationContext)
+
+			fh.appendDataFile(filename, ", ",
+					applicationContext)
+
+			fh.appendDataFile(filename, distanceMeter,
+					applicationContext)
 
             //22, 24.53, 500
             fh.appendDataFile(filename, "\n",
@@ -156,6 +170,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         outState.putBoolean("COLLECT_FLAG",collectFlag)
         outState.putBoolean("PERMISSION_FLAG",permFlag)
         outState.putInt("START_STEPS", startSteps)
+        outState.putString("DISTANCE", distanceMeter)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -174,11 +189,22 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         seconds = TimeUnit.MILLISECONDS.toSeconds(elapsedTime)
     }
 
+	private fun getDistance(){
+		val HEIGHT = 1.87
+		val STEP_FACTOR = 0.413
+
+        //  Get distance with 1 decimal using Mile formula:
+        distanceMeter = (HEIGHT*STEP_FACTOR*startSteps).toBigDecimal()
+                .setScale(1, RoundingMode.UP).toString()
+    }
+
     private fun updateActivityInfo(){
         startSteps += 1
         stepDetectorTxt.text = startSteps.toString()
         getElapsedTime()
+		getDistance()
         main_elapsed_time.text = "${minutes} min,${seconds} sec"
+        main_distance.text = distanceMeter + " m"
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
