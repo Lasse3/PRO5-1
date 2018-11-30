@@ -8,18 +8,42 @@
 package dk.pme.kim.pro5
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.net.Uri
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.os.Environment
 import android.os.SystemClock
+import android.support.v4.app.ActivityCompat
+import android.util.Log
+import android.view.View
 import android.widget.Toast
+import com.google.firebase.storage.FirebaseStorage
 import kotlinx.android.synthetic.main.activity_main.*
+import java.io.File
 import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity(), SensorEventListener {
+
+    //	Array with permissions:
+    private var permissionsRequired = arrayOf(
+            android.Manifest.permission.INTERNET,
+            android.Manifest.permission.READ_EXTERNAL_STORAGE,
+            android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+
+    //	Values for uploading:
+    private val filename_upload = "exp6.pdf"
+    private val mobilePath_upload = "/storage/emulated/0/Download/"+
+			filename_upload
+    private val firebasePath_upload = "Test/"+filename_upload
+
+    //	Firebase url and file to upload:
+    private val url = "gs://storageexample-916c1.appspot.com"
+    val file = Uri.fromFile(File(mobilePath_upload))
 
     private var counterStepDetector=0
     private var startTime   : Long=0
@@ -35,26 +59,34 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         fun getInstances(){
             // Check whether we're recreating a previously destroyed instance
             //update the value if we are, otherwise, just initialize it to 0.
-            counterStepDetector = savedInstanceState?.getInt("STATE_STEP_DETECTOR") ?: 0
-            startTime = savedInstanceState?.getLong("START_TIME") ?: SystemClock.elapsedRealtime()
-            collectFlag= savedInstanceState?.getBoolean("COLLECT_FLAG") ?: false
+            counterStepDetector =
+					savedInstanceState?.getInt("STATE_STEP_DETECTOR") ?: 0
+            startTime =
+					savedInstanceState?.getLong("START_TIME")
+					?: SystemClock.elapsedRealtime()
+            collectFlag=
+					savedInstanceState?.getBoolean("COLLECT_FLAG") ?: false
         }
         fun setupSensors(){
-            val mSensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
-            val mStepDetector= mSensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR)
+            val mSensorManager =
+					getSystemService(Context.SENSOR_SERVICE) as SensorManager
+            val mStepDetector=
+					mSensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR)
 
             if(mStepDetector == null)
             {
-                Toast.makeText(this, "No Step Detector sensor was found!",
-                        Toast.LENGTH_LONG).show()
+				toast("No Step Detector sensor was found!")
             }
             else
             {
-                mSensorManager.registerListener(this, mStepDetector, SensorManager.SENSOR_DELAY_UI)
+                mSensorManager.registerListener(this, mStepDetector,
+						SensorManager.SENSOR_DELAY_UI)
             }
 
         }
         fun init(){
+            ActivityCompat.requestPermissions(this,
+                    permissionsRequired, 123)
             getInstances()
             getElapsedTime()
             setupSensors()
@@ -67,7 +99,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                 if(!collectFlag)
                 {
                     startTime = SystemClock.elapsedRealtime()
-                    id_collect.text = resources.getString(R.string.collectingData)
+                    id_collect.text =
+                            resources.getString(R.string.collectingData)
                     collectFlag=true
                 }
                 else
@@ -80,13 +113,16 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             }
 
             id_transfer.setOnClickListener {
-                if(id_transfer.text.toString() == resources.getString(R.string.transferData))
+                if(id_transfer.text.toString() ==
+                        resources.getString(R.string.transferData))
                 {
-                    id_transfer.text = resources.getString(R.string.transferingData)
+                    id_transfer.text =
+                            resources.getString(R.string.transferingData)
                 }
 
                 else {
-                    id_transfer.text = resources.getString(R.string.transferData)
+                    id_transfer.text =
+                            resources.getString(R.string.transferData)
                 }
             }
         }
@@ -133,4 +169,51 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             }
         }
     }
+
+    //	Upload file:
+    fun uploadFile(url : String, path : String, file : Uri){
+        val storageRef = FirebaseStorage.getInstance().getReferenceFromUrl(url)
+        val fileRef = storageRef.child(path)
+
+        //pBar_upload.visibility = View.VISIBLE
+        //pBar_upload.progress = pBar_upload.min
+
+        fileRef.putFile(file)
+                .addOnSuccessListener {
+                    //pBar_upload.progress = pBar_upload.max
+                    //pBar_upload.visibility = View.GONE
+					toast("Upload succesful!")
+                }
+                .addOnFailureListener {
+                    Log.e("Upload_error_message", it.message)
+                    Log.e("Upload_error_stacktrace",
+							it.stackTrace.toString())
+                    Log.e("Upload_error_cause", it.cause.toString())
+					toast("Upload unsuccesful!")
+                }
+    }
+
+	//	Run code if permissions are granted:
+    override fun onRequestPermissionsResult(requestCode: Int,
+											permissions: Array<out String>,
+											grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        if(requestCode == 123){
+            if(grantResults[0] == PackageManager.PERMISSION_GRANTED &&
+                    grantResults[1] == PackageManager.PERMISSION_GRANTED &&
+                    grantResults[2] == PackageManager.PERMISSION_GRANTED){
+                uploadFile(url, firebasePath_upload, file)
+            }
+
+            else{
+                toast("Permissions need to be allowed...")
+            }
+        }
+    }
+
+	// Extension function to show toast message
+	private fun Context.toast(message:String){
+		Toast.makeText(applicationContext,message,Toast.LENGTH_SHORT).show()
+	}
 }
